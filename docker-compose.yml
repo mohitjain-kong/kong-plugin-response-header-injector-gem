@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  kong:
+    image: kong:latest
+    restart: always
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_HOST: kong-db
+      KONG_PG_PORT: 5432
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kong
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001, 0.0.0.0:8444 ssl
+      KONG_PROXY_LISTEN: 0.0.0.0:8000, 0.0.0.0:8443 ssl
+      KONG_PLUGINS: bundled,response-header-injector-gem
+      KONG_PLUGINSERVER_NAMES: response-header-injector-gem
+      KONG_PLUGINSERVER_RESPONSE_HEADER_INJECTOR_GEM_COMMAND: /opt/kong/plugins/response-header-injector-gem/bin/server
+      KONG_PLUGINSERVER_RESPONSE_HEADER_INJECTOR_GEM_TIMEOUT: 5
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+    volumes:
+      - ./plugins:/opt/kong/plugins
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+      - "8001:8001"
+      - "8444:8444"
+    depends_on:
+      - kong-db
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  kong-db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: kong
+      POSTGRES_DB: kong
+      POSTGRES_PASSWORD: kong
+    ports:
+      - "5432:5432"
+    volumes:
+      - kong_data:/var/lib/postgresql/data
+
+volumes:
+  kong_data:
